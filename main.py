@@ -1,58 +1,73 @@
+import sys
 from game_objects import *
 
-WIDTH, HEIGHT = 500, 660
+WIDTH, HEIGHT = 800, 800
 FPS = 50
 
 pygame.init()
 screen = pygame.display.set_mode([WIDTH, HEIGHT])
-field = pygame.Surface([WIDTH, HEIGHT])
+fon = pygame.transform.scale(load_image('data/Fon/sky.png'), (WIDTH, HEIGHT))
+fon.blit(pygame.transform.scale(load_image('data/Fon/clouds.png'), (WIDTH, HEIGHT // 2)), (0, HEIGHT // 2))
 pygame.display.set_caption('Перемещение героя')
+player = Warrior(0, 0)
 
 
-def start_screen():
-    intro_text = ["ЗАСТАВКА"]
-    fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))
-    font = pygame.font.Font(None, 30)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, True, pygame.Color('black'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
+def render_level(level):
+    level = list(reversed(level))
+    y = HEIGHT - 100
+    for i in range(len(level)):
+        f = True
+        x = 20
+        for j in range(len(level[i])):
+            if level[i][j] == '-' or level[i][j] == '@':
+                if f:
+                    f = False
+                    im = load_image('data/Cliffs/leftb.png')
+                else:
+                    if j + 1 < len(level[i]):
+                        if level[i][j + 1] == '-':
+                            im = load_image('data/Cliffs/midb.png')
+                        elif level[i][j + 1] == '.':
+                            im = load_image('data/Cliffs/rightb.png')
+                            f = True
+                c = Cliff(x, y, im)
+                if level[i][j] == '@':
+                    player.rect.x = x + 20
+                    h = player.image.get_height()
+                    player.rect.y = y - h
+                x += c.rect.width
+            else:
+                x += 10
+        y -= HEIGHT // len(level)
 
 
 def main():
-    player = Warrior(50, 50)
     running = True
-    change = False
     key = None
+    render_level(load_level('data/Levels/level1.txt'))
     while running:
-        for event in pygame.event.get():
+        for i, event in enumerate(pygame.event.get()):
             if event.type == pygame.QUIT:
                 running = False
                 break
             if event.type == pygame.KEYDOWN:
-                if event.key in [pygame.K_a, pygame.K_LEFT, pygame.K_d, pygame.K_RIGHT]:
-                    change = True
-                    key = event.key
-            elif event.type == pygame.KEYUP:
-                if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT]:
-                    player.change_mode('Idle')
-
-        if change:
-            if key in [pygame.K_a, pygame.K_LEFT]:
-                player.change_mode('Run', -1)
-            elif key in [pygame.K_d, pygame.K_RIGHT]:
-                player.change_mode('Run', 1)
-            change = False
+                if event.key in [pygame.K_a, pygame.K_LEFT]:
+                    player.change_mode('Run', -1)
+                elif event.key in [pygame.K_d, pygame.K_RIGHT]:
+                    player.change_mode('Run', 1)
+                key = event.key
+            if event.type == pygame.KEYUP:
+                if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT] and key == event.key:
+                    if player.cur_mode != 'Attack':
+                        player.change_mode('Idle')
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if not (player.cur_mode == 'Attack' and player.cur_frame < 7):
+                        player.change_mode('Attack')
 
         player.move()
 
-        screen.fill('black')
+        screen.blit(fon, (0, 0))
         for sprite in all_sprites:
             sprite.update()
         all_sprites.draw(screen)

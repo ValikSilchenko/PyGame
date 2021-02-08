@@ -1,11 +1,8 @@
 from functions import *
 
 
-class SpritesLoadError(Exception):
-    pass
-
-
 all_sprites = pygame.sprite.Group()
+cliffs = pygame.sprite.Group()
 
 
 class Warrior(pygame.sprite.Sprite):
@@ -17,9 +14,9 @@ class Warrior(pygame.sprite.Sprite):
         self.cur_mode = 'Idle'
         self.image = self.frames[self.cur_mode][self.cur_frame]
         self.rect = self.image.get_rect()
-        self.rect = self.rect.move(x, y)
+        self.rect = self.rect.move(x, y + 1)
         self.clock = pygame.time.Clock()  # clock to control sprites update
-        self.tick = 20  # tick for clock
+        self.tick = 10  # tick for clock
         self.vx = self.vy = 0
         self.direction = 1  # direction of moving: 1 - right, -1 - left
         self.flip = False
@@ -33,31 +30,46 @@ class Warrior(pygame.sprite.Sprite):
     def change_mode(self, mode, direction=None):
         self.cur_mode = mode
         self.cur_frame = 0
+        if direction != self.direction and direction is not None:
+            for folder in objects_in_dir('data/Warrior'):
+                for sprite in self.frames[folder]:
+                    self.frames[folder][
+                        self.frames[folder].index(sprite)] = pygame.transform.flip(sprite, True, False)
+            self.direction = direction
         if mode == 'Run':
-            if direction != self.direction and direction is not None:
-                for sprite in self.frames['Run']:
-                    self.frames['Run'][self.frames['Run'].index(sprite)] = pygame.transform.flip(sprite, True, False)
-                for sprite in self.frames['Idle']:
-                    self.frames['Idle'][self.frames['Idle'].index(sprite)] = pygame.transform.flip(sprite, True, False)
-                self.direction = direction
-            if self.direction > 0:
-                self.vx = 10
-            else:
-                self.vx = -10
-        else:
+            self.vx = 10 * self.direction
+            self.tick = 20
+        elif mode == 'Idle' or mode == 'Attack':
             self.vx = self.vy = 0
+            self.tick = 10
         self.image = self.frames[self.cur_mode][self.cur_frame]
 
     def move(self):
         self.rect.x += self.vx
+        if pygame.sprite.spritecollideany(self, cliffs):
+            self.rect.x -= self.vx
         self.rect.y += self.vy
+        if pygame.sprite.spritecollideany(self, cliffs):
+            self.rect.y -= self.vy
 
     def update(self):
-        self.cur_frame = (self.cur_frame + 1) % len(self.frames[self.cur_mode])
-        self.image = self.frames[self.cur_mode][self.cur_frame]
-        self.clock.tick(self.tick)
+        if self.cur_mode == 'Attack' and self.cur_frame == len(self.frames[self.cur_mode]) - 1:
+            self.change_mode('Idle')
+        else:
+            self.cur_frame = (self.cur_frame + 1) % len(self.frames[self.cur_mode])
+            self.image = self.frames[self.cur_mode][self.cur_frame]
+            self.clock.tick(self.tick)
 
-    # def cut_sheet(self, sheet, columns, rows):
+
+class Cliff(pygame.sprite.Sprite):
+    def __init__(self, x, y, img):
+        super().__init__(all_sprites, cliffs)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
+
+
+# def cut_sheet(self, sheet, columns, rows):
     #     self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
     #                             sheet.get_height() // rows)
     #     for j in range(rows):

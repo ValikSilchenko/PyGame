@@ -1,12 +1,16 @@
 import pygame
 import os
-import sys
+
+
+class SpritesLoadError(Exception):
+    def __init__(self, message):
+        self.msg = message
 
 
 def load_image(fullname, colorkey=None):
     if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
+        e = SpritesLoadError(f"Файл с изображением '{fullname}' не найден")
+        raise e
     image = pygame.image.load(fullname)
     if colorkey is not None:
         image = image.convert()
@@ -30,19 +34,3 @@ def objects_in_dir(path, is_file=False):
     if not is_file:
         return [name for name in os.listdir(path)]
     return [name for name in os.listdir(path) if os.path.isfile(os.path.join(path, name))]
-
-
-# def render_level(level):
-#     screen.fill('black')
-#     im = load_image('grass.png')
-#     cell_width, cell_height = im.get_size()
-#     for i in range(len(level)):
-#         for j in range(len(level[0])):
-#             field.blit(im, (j * cell_width, i * cell_height))
-#             if level[i][j] == '#':
-#                 Tile([j * cell_width, i * cell_height], (cell_width, cell_height), 'box')
-#             elif level[i][j] == '.':
-#                 Tile([j * cell_width, i * cell_height], (cell_width, cell_height), 'grass')
-#             elif level[i][j] == '@':
-#                 Tile([j * cell_width, i * cell_height], (cell_width, cell_height), 'grass')
-#                 Player([j * cell_width, i * cell_height], (cell_width, cell_height))
