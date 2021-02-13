@@ -9,7 +9,7 @@ screen = pygame.display.set_mode([WIDTH, HEIGHT])
 fon = pygame.transform.scale(load_image('data/Fon/sky.png'), (WIDTH, HEIGHT))
 fon.blit(pygame.transform.scale(load_image('data/Fon/clouds.png'), (WIDTH, HEIGHT // 2)), (0, HEIGHT // 2))
 pygame.display.set_caption('Перемещение героя')
-player = Warrior(0, 0)
+player = Warrior()
 
 
 def render_level(level):
@@ -34,7 +34,7 @@ def render_level(level):
                 if level[i][j] == '@':
                     player.rect.x = x + 20
                     h = player.image.get_height()
-                    player.rect.y = y - h
+                    player.rect.y = y - h + 1
                 x += c.rect.width
             else:
                 x += 10
@@ -53,17 +53,19 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key in [pygame.K_a, pygame.K_LEFT]:
                     player.change_mode('Run', -1)
+                    key = event.key
                 elif event.key in [pygame.K_d, pygame.K_RIGHT]:
                     player.change_mode('Run', 1)
-                key = event.key
+                    key = event.key
+                elif event.key == pygame.K_SPACE:
+                    player.change_mode('Jump')
             if event.type == pygame.KEYUP:
-                if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT] and key == event.key:
-                    if player.cur_mode != 'Attack':
-                        player.change_mode('Idle')
+                if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT] and event.key == key:
+                    player.change_mode('Idle')
+                    key = []
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    if not (player.cur_mode == 'Attack' and player.cur_frame < 7):
-                        player.change_mode('Attack')
+                    player.change_mode('Attack')
 
         player.move()
 
