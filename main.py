@@ -62,7 +62,6 @@ def main():
             if event.type == pygame.KEYUP:
                 if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT] and event.key == key:
                     player.change_mode('Idle')
-                    key = []
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     player.change_mode('Attack')

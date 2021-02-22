@@ -6,20 +6,29 @@ cliffs = pygame.sprite.Group()
 
 
 class Warrior(pygame.sprite.Sprite):
+    """
+
+    Player class that providing his movement and interaction with around world
+    self.frames - dict that contain all animations;
+    self.clock - class pygame.time.Clock() that responsible for animation update and movement speed;
+    self.direction - contain value about current direction: 1 - directed on right, -1 - directed on left;
+
+    """
+
     def __init__(self):
         super().__init__(all_sprites)
-        self.frames = {}  # dict with all sprites of character (idle sprites, running sprites etc.)
+        self.frames = {}
         self.load_frames()
         self.cur_frame = 0
         self.cur_mode = 'Idle'
+        self.run_after_jump = self.jump_fall = False
         self.image = self.frames[self.cur_mode][self.cur_frame]
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
-        self.clock = pygame.time.Clock()  # clock to control sprites update
-        self.tick = 10  # tick for clock
-        self.vx = self.vy = self.jump = 0
-        self.direction = 1  # direction of moving: 1 - right, -1 - left
-        self.flip = False
+        self.clock = pygame.time.Clock()
+        self.tick = 10
+        self.vx = self.vy = 0
+        self.direction = 1
 
     def load_frames(self):
         for folder in objects_in_dir('data/Warrior'):
@@ -27,68 +36,84 @@ class Warrior(pygame.sprite.Sprite):
             for i in range(1, len(objects_in_dir(f'data/Warrior/{folder}', True)) + 1):
                 self.frames[folder] += [load_image(f'data/Warrior/{folder}/Warrior_{folder}_{i}.png')]
 
+    def flip(self):
+        """Function that get frames mirrored"""
+        for folder in self.frames.keys():
+            for sprite in self.frames[folder]:
+                self.frames[folder][self.frames[folder].index(sprite)] = pygame.transform.flip(sprite, True, False)
+
+    def check_collide_mask(self):
+        for sprite in cliffs:
+            if pygame.sprite.collide_mask(self, sprite):
+                return sprite.rect.x, sprite.rect.y
+        return False
+
+    def terrain_movement(self):
+        """Function that change character's position depending on terrain"""
+        if self.cur_mode == 'Run':
+            if pygame.sprite.spritecollideany(self, cliffs):
+                if not self.check_collide_mask():
+                    k = 0
+                    while k < 10:
+                        self.rect.y += 1
+                        if self.check_collide_mask():
+                            self.rect.y -= 1
+                            break
+                        k += 1
+                    if k == 10:
+                        self.rect.y -= 10
+                        self.change_mode('Fall')
+                else:
+                    while self.check_collide_mask():
+                        self.rect.y -= 1
+
     def change_mode(self, mode, direction=None):
-        self.cur_mode = mode
         if not (self.cur_mode == 'Attack' and self.cur_frame < 7):
-            self.cur_frame = 0
+            self.cur_frame = -1
+        # if self.cur_mode == 'Run' and mode == 'Jump':
+        #     self.run_after_jump = True
+        self.cur_mode = mode
+
         if direction != self.direction and direction is not None:
-            for folder in objects_in_dir('data/Warrior'):
-                for sprite in self.frames[folder]:
-                    self.frames[folder][
-                        self.frames[folder].index(sprite)] = pygame.transform.flip(sprite, True, False)
+            self.flip()
             self.direction = direction
+
         if mode == 'Run':
             self.vx = 10 * self.direction
+            self.vy = 0
             self.tick = 20
-        elif mode == 'Idle' or mode == 'Attack':
+        elif (mode == 'Idle' or mode == 'Attack') and not self.jump_fall:
             self.vx = self.vy = 0
             self.tick = 10
-        elif mode == 'Fall':
-            self.vy = 5
-            self.vx = 1 * self.direction
-            self.tick = 20
         elif mode == 'Jump':
-            self.vy = -4
-            self.vx = 3 * self.direction
-            self.tick = 30
-        self.image = self.frames[self.cur_mode][self.cur_frame]
+            self.vy = -10
+            self.tick = 20
+        elif mode == 'Fall':
+            self.vy = 1
+            self.tick = 20
 
     def move(self):
         self.rect.x += self.vx
-        # x = self.rect.x
-        # f = False
-        # for sprite in cliffs.sprites():
-        #     if pygame.sprite.collide_mask(self, sprite):
-        #         f = True
-        #         x = sprite.rect.x
-        # if f:
-        #     self.rect.x = x - self.rect.width
+        self.terrain_movement()
+
         self.rect.y += self.vy
-        # if self.cur_mode == 'Jump':
-        #     self.jump += self.vy
-        # f = False
-        # y = self.rect.y
-        # for sprite in cliffs.sprites():
-        #     if pygame.sprite.collide_mask(self, sprite):
-        #         f = True
-        #         y = sprite.rect.y
-        # if f:
-        #     if self.cur_mode != 'Jump':
-        #         self.rect.y = y - self.rect.height
-        #     else:
-        #         self.change_mode('Fall')
+        coords = self.check_collide_mask()
+        if pygame.sprite.spritecollideany(self, cliffs) and coords:
+            if self.rect.y > coords[1] and self.vy < 0:
+                self.rect.y -= self.vy
+                self.vy = -self.vy
+            elif self.rect.y < coords[1]:
+                self.rect.y = coords[1] - self.rect.height + 1
+                self.change_mode('Idle')
+                return
+
+        if self.vy != 0:
+            self.vy += 0.75
 
     def update(self):
-        # f = False
-        # for sprite in cliffs.sprites():
-        #     if pygame.sprite.collide_mask(self, sprite) or pygame.sprite.spritecollideany(self, cliffs):
-        #         f = True
-        # if not f and self.cur_mode != 'Jump':
-        #     self.change_mode('Fall')
-        #     return
         if self.cur_mode == 'Attack' and self.cur_frame == len(self.frames[self.cur_mode]) - 1:
             self.change_mode('Idle')
-        elif self.cur_mode == 'Jump' and self.jump + abs(self.vy) > 60:
+        elif self.cur_mode == 'Jump' and self.vy >= 0:
             self.change_mode('Fall')
         else:
             self.cur_frame = (self.cur_frame + 1) % len(self.frames[self.cur_mode])
