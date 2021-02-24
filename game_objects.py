@@ -50,31 +50,34 @@ class Warrior(pygame.sprite.Sprite):
 
     def terrain_movement(self):
         """Function that change character's position depending on terrain"""
-        if self.cur_mode == 'Run':
-            if pygame.sprite.spritecollideany(self, cliffs):
-                if not self.check_collide_mask():
-                    k = 0
-                    while k < 10:
-                        self.rect.y += 1
-                        if self.check_collide_mask():
-                            self.rect.y -= 1
-                            break
-                        k += 1
-                    if k == 10:
-                        self.rect.y -= 10
+        if pygame.sprite.spritecollideany(self, cliffs):
+            if not self.check_collide_mask():
+                k = 0
+                while k < 5:
+                    self.rect.y += 1
+                    if self.check_collide_mask():
+                        self.rect.y -= 1
+                        break
+                    k += 1
+                if k == 5:
+                    self.rect.y -= 5
+                    if self.cur_mode not in ['Jump', 'Fall']:
                         self.change_mode('Fall')
-                else:
-                    coords = self.check_collide_mask()
-                    if coords[1] + 5 < self.rect.y + self.rect.height:
-                        self.rect.x -= self.vx
+            else:
+                coords = self.check_collide_mask()
+                if coords[1] + 5 < self.rect.y + self.rect.height:
+                    self.rect.x -= self.vx
 
     def change_mode(self, mode, direction=None):
         if not (self.cur_mode == 'Attack' and self.cur_frame < 7):
             self.cur_frame = -1
-        # if self.cur_mode == 'Run' and mode == 'Jump':
-        #     self.run_after_jump = True
+        if (self.cur_mode == 'Run' and mode == 'Jump') or (self.cur_mode in ['Jump', 'Fall'] and mode == 'Run'):
+            self.run_after_jump = True
+        elif self.run_after_jump and mode == 'Idle':
+            self.run_after_jump = False
         if not self.jump_fall or (self.cur_mode == 'Jump' and mode == 'Fall'):
-            self.cur_mode = mode
+            if not (self.cur_mode == 'Attack' and mode == 'Jump'):
+                self.cur_mode = mode
 
         if direction != self.direction and direction is not None:
             self.flip()
@@ -85,13 +88,13 @@ class Warrior(pygame.sprite.Sprite):
             if not self.jump_fall:
                 self.vy = 0
             self.tick = 20
-        elif (mode == 'Idle' or mode == 'Attack') and not self.jump_fall:
+        elif mode == 'Idle' and not (mode == 'Attack' and self.jump_fall):
             self.vx = 0
             if not self.jump_fall:
                 self.vy = 0
-            self.tick = 10
-        elif mode == 'Jump':
-            self.vy = -10
+                self.tick = 10
+        elif mode == 'Jump' and self.cur_mode != 'Attack':
+            self.vy = -15
             self.tick = 20
             self.jump_fall = True
         elif mode == 'Fall':
@@ -112,10 +115,13 @@ class Warrior(pygame.sprite.Sprite):
             elif self.rect.y < coords[1]:
                 self.rect.y = coords[1] - self.rect.height + 1
                 self.jump_fall = False
-                self.change_mode('Idle')
+                if self.run_after_jump:
+                    self.change_mode('Run')
+                else:
+                    self.change_mode('Idle')
                 return
 
-        if self.vy != 0:
+        if self.jump_fall:
             self.vy += 0.75
 
     def update(self):
