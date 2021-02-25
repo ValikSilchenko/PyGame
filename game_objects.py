@@ -1,27 +1,40 @@
 from functions import *
 
 
+WIDTH, HEIGHT = 800, 800
+
 all_sprites = pygame.sprite.Group()
 cliffs = pygame.sprite.Group()
 
 
-class Warrior(pygame.sprite.Sprite):
+class Camera:
+    def __init__(self):
+        self.x = self.y = 0
+
+    def apply(self, other):
+        other.rect.x += self.x
+        other.rect.y += self.y
+
+    def set_cam(self, target):
+        self.x = WIDTH // 2 - target.rect.x
+        self.y = HEIGHT // 2 - target.rect.y
+
+
+class NPC(pygame.sprite.Sprite):
     """
 
-    Player class that providing his movement and interaction with around world
+    The body class of Player's and Enemy's classes
     self.frames - dict that contain all animations;
     self.clock - class pygame.time.Clock() that responsible for animation update and movement speed;
     self.direction - contain value about current direction: 1 - directed on right, -1 - directed on left;
 
     """
-
-    def __init__(self):
+    def __init__(self, path_to_sprites):
         super().__init__(all_sprites)
         self.frames = {}
-        self.load_frames()
+        self.load_frames(path_to_sprites)
         self.cur_frame = 0
         self.cur_mode = 'Idle'
-        self.run_after_jump = self.jump_fall = False
         self.image = self.frames[self.cur_mode][self.cur_frame]
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
@@ -30,17 +43,29 @@ class Warrior(pygame.sprite.Sprite):
         self.vx = self.vy = 0
         self.direction = 1
 
-    def load_frames(self):
-        for folder in objects_in_dir('data/Warrior'):
+    def load_frames(self, path):
+        for folder in objects_in_dir(path):
             self.frames[folder] = []
-            for i in range(1, len(objects_in_dir(f'data/Warrior/{folder}', True)) + 1):
-                self.frames[folder] += [load_image(f'data/Warrior/{folder}/Warrior_{folder}_{i}.png')]
+            for i in range(1, len(objects_in_dir(path + f'/{folder}', True)) + 1):
+                self.frames[folder] += [load_image(path + f'/{folder}' + f'/{path.split("/")[1]}_{folder}_{i}.png')]
 
     def flip(self):
         """Function that get frames mirrored"""
         for folder in self.frames.keys():
             for sprite in self.frames[folder]:
                 self.frames[folder][self.frames[folder].index(sprite)] = pygame.transform.flip(sprite, True, False)
+
+
+class Warrior(NPC):
+    """
+
+    Player class that providing his movement and interaction with around world
+
+    """
+
+    def __init__(self):
+        super().__init__('data/Warrior')
+        self.run_after_fall = self.jump_fall = False
 
     def check_collide_mask(self):
         for sprite in cliffs:
@@ -64,17 +89,25 @@ class Warrior(pygame.sprite.Sprite):
                     if self.cur_mode not in ['Jump', 'Fall']:
                         self.change_mode('Fall')
             else:
-                coords = self.check_collide_mask()
-                if coords[1] + 5 < self.rect.y + self.rect.height:
+                k = 0
+                while k < 5:
+                    self.rect.y -= 1
+                    if not self.check_collide_mask():
+                        break
+                    k += 1
+                if k == 5:
                     self.rect.x -= self.vx
 
     def change_mode(self, mode, direction=None):
         if not (self.cur_mode == 'Attack' and self.cur_frame < 7):
             self.cur_frame = -1
-        if (self.cur_mode == 'Run' and mode == 'Jump') or (self.cur_mode in ['Jump', 'Fall'] and mode == 'Run'):
-            self.run_after_jump = True
-        elif self.run_after_jump and mode == 'Idle':
-            self.run_after_jump = False
+
+        if (self.cur_mode == 'Run' and mode in ['Jump', 'Fall']) \
+                or (self.cur_mode in ['Jump', 'Fall'] and mode == 'Run'):
+            self.run_after_fall = True
+        elif self.run_after_fall and mode == 'Idle':
+            self.run_after_fall = False
+
         if not self.jump_fall or (self.cur_mode == 'Jump' and mode == 'Fall'):
             if not (self.cur_mode == 'Attack' and mode == 'Jump'):
                 self.cur_mode = mode
@@ -87,19 +120,19 @@ class Warrior(pygame.sprite.Sprite):
             self.vx = 10 * self.direction
             if not self.jump_fall:
                 self.vy = 0
-            self.tick = 20
-        elif mode == 'Idle' and not (mode == 'Attack' and self.jump_fall):
+            self.tick = 25
+        elif mode == 'Idle' or (mode == 'Attack' and self.cur_mode != 'Jump'):
             self.vx = 0
             if not self.jump_fall:
                 self.vy = 0
                 self.tick = 10
         elif mode == 'Jump' and self.cur_mode != 'Attack':
             self.vy = -15
-            self.tick = 20
+            self.tick = 30
             self.jump_fall = True
         elif mode == 'Fall':
             self.vy = 1
-            self.tick = 20
+            self.tick = 30
             self.jump_fall = True
 
     def move(self):
@@ -115,7 +148,7 @@ class Warrior(pygame.sprite.Sprite):
             elif self.rect.y < coords[1]:
                 self.rect.y = coords[1] - self.rect.height + 1
                 self.jump_fall = False
-                if self.run_after_jump:
+                if self.run_after_fall:
                     self.change_mode('Run')
                 else:
                     self.change_mode('Idle')
@@ -153,53 +186,5 @@ class Cliff(pygame.sprite.Sprite):
     #             self.frames.append(sheet.subsurface(pygame.Rect(
     #                 frame_location, self.rect.size)))
 
-# class Tile(pygame.sprite.Sprite):
-#     def __init__(self, pos, size, tile):
-#         super().__init__(all_sprites)
-#         if tile == 'box':
-#             self.image = pygame.transform.scale(load_image('box.png'), size)
-#             borders.add(self)
-#         elif tile == 'grass':
-#             self.image = pygame.transform.scale(load_image('grass.png'), size)
-#             grass.add(self)
-#         self.rect = self.image.get_rect()
-#         self.rect.x, self.rect.y = pos
 
 
-# class Player(pygame.sprite.Sprite):
-#     def __init__(self, pos, size):
-#         super().__init__(all_sprites, player)
-#         self.image = load_image('mar.png')
-#         self.rect = self.image.get_rect()
-#         self.rect.x, self.rect.y = pos[0] + 15, pos[1] + 5
-#         self.step = size
-#
-#     def update(self, key):
-#         move = ()
-#         if key == pygame.K_LEFT or key == pygame.K_a:
-#             move = (-self.step[0], 0)
-#         elif key == pygame.K_RIGHT or key == pygame.K_d:
-#             move = (self.step[0], 0)
-#         elif key == pygame.K_UP or key == pygame.K_w:
-#             move = (0, -self.step[1])
-#         elif key == pygame.K_DOWN or key == pygame.K_s:
-#             move = (0, self.step[1])
-#         if move:
-#             self.rect.x += move[0]
-#             self.rect.y += move[1]
-#             if pygame.sprite.spritecollideany(self, borders):
-#                 self.rect.x -= move[0]
-#                 self.rect.y -= move[1]
-#
-
-# class Camera:
-#     def __init__(self):
-#         self.x = self.y = 0
-#
-#     def apply(self, other):
-#         other.rect.x += self.x
-#         other.rect.y += self.y
-#
-#     def set_cam(self, target):
-#         self.x = WIDTH // 2 - target.rect.x
-#         self.y = HEIGHT // 2 - target.rect.y

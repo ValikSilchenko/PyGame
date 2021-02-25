@@ -1,14 +1,12 @@
 import sys
 from game_objects import *
 
-WIDTH, HEIGHT = 800, 800
-FPS = 50
 
 pygame.init()
 screen = pygame.display.set_mode([WIDTH, HEIGHT])
 fon = pygame.transform.scale(load_image('data/Fon/sky.png'), (WIDTH, HEIGHT))
 fon.blit(pygame.transform.scale(load_image('data/Fon/clouds.png'), (WIDTH, HEIGHT // 2)), (0, HEIGHT // 2))
-pygame.display.set_caption('Перемещение героя')
+pygame.display.set_caption('Warriori')
 player = Warrior()
 
 
@@ -41,7 +39,12 @@ def render_level(level):
         y -= HEIGHT // len(level)
 
 
+cam = Camera()
+cam.set_cam(player)
+
+
 def main():
+    clock = pygame.time.Clock()
     running = True
     key = None
     render_level(load_level('data/Levels/level1.txt'))
@@ -58,21 +61,26 @@ def main():
                     player.change_mode('Run', 1)
                     key = event.key
                 elif event.key == pygame.K_SPACE:
-                    player.change_mode('Jump')
+                    if player.cur_mode not in ['Jump', 'Fall']:
+                        player.change_mode('Jump')
             if event.type == pygame.KEYUP:
                 if event.key in [pygame.K_a, pygame.K_d, pygame.K_LEFT, pygame.K_RIGHT] and event.key == key:
-                    player.change_mode('Idle')
+                    if player.cur_mode != 'Attack':
+                        player.change_mode('Idle')
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     player.change_mode('Attack')
 
         player.move()
+        cam.set_cam(player)
 
         screen.blit(fon, (0, 0))
         for sprite in all_sprites:
             sprite.update()
+            cam.apply(sprite)
         all_sprites.draw(screen)
 
+        clock.tick(100)
         pygame.display.flip()
 
     pygame.quit()
