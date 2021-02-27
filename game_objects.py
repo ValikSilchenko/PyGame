@@ -8,6 +8,7 @@ cliffs = pygame.sprite.Group()
 
 
 class Camera:
+    """Class that changes objects position depend of player coords"""
     def __init__(self):
         self.x = self.y = 0
 
@@ -57,11 +58,7 @@ class NPC(pygame.sprite.Sprite):
 
 
 class Warrior(NPC):
-    """
-
-    Player class that providing his movement and interaction with around world
-
-    """
+    """Player class that providing his movement and interaction with around world"""
 
     def __init__(self):
         super().__init__('data/Warrior')
@@ -112,7 +109,7 @@ class Warrior(NPC):
             if not (self.cur_mode == 'Attack' and mode == 'Jump'):
                 self.cur_mode = mode
 
-        if direction != self.direction and direction is not None:
+        if direction != self.direction and direction is not None:  # проверка смены направления
             self.flip()
             self.direction = direction
 
@@ -158,12 +155,14 @@ class Warrior(NPC):
             self.vy += 0.75
 
     def update(self):
+        # переключение в режим 'Idle' после завершения атаки
         if self.cur_mode == 'Attack' and self.cur_frame == len(self.frames[self.cur_mode]) - 1:
             self.change_mode('Idle')
+        # переключение в режим падения после достижения пиковой высоты прыжка, индикатором чего является self.vy >= 0
         elif self.cur_mode == 'Jump' and self.vy >= 0:
             self.change_mode('Fall')
         else:
-            self.cur_frame = (self.cur_frame + 1) % len(self.frames[self.cur_mode])
+            self.cur_frame = (self.cur_frame + 1) % len(self.frames[self.cur_mode])  # обновление спрайта
             self.image = self.frames[self.cur_mode][self.cur_frame]
             self.clock.tick(self.tick)
 

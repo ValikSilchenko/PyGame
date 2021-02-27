@@ -7,10 +7,14 @@ class SpritesLoadError(Exception):
         self.msg = message
 
 
+class EmptyLevelFile(Exception):
+    def __init__(self):
+        self.msg = 'Выбранный файл пуст'
+
+
 def load_image(fullname, colorkey=None):
     if not os.path.isfile(fullname):
-        e = SpritesLoadError(f"Файл с изображением '{fullname}' не найден")
-        raise e
+        raise SpritesLoadError(f"Файл с изображением '{fullname}' не найден")
     image = pygame.image.load(fullname)
     if colorkey is not None:
         image = image.convert()
@@ -27,6 +31,8 @@ def load_level(filename):
         level_map = [line.strip() for line in mapFile]
     max_width = max(map(len, level_map))
 
+    if not level_map:
+        raise EmptyLevelFile
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
