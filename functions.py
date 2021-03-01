@@ -8,8 +8,8 @@ class SpritesLoadError(Exception):
 
 
 class EmptyLevelFile(Exception):
-    def __init__(self):
-        self.msg = 'Выбранный файл пуст'
+    def __init__(self, message):
+        self.msg = message
 
 
 def load_image(fullname, colorkey=None):
@@ -29,10 +29,10 @@ def load_image(fullname, colorkey=None):
 def load_level(filename):
     with open(filename, 'r') as mapFile:
         level_map = [line.strip() for line in mapFile]
+    if not level_map:
+        raise EmptyLevelFile('Выбранный файл пуст')
     max_width = max(map(len, level_map))
 
-    if not level_map:
-        raise EmptyLevelFile
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 

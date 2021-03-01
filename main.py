@@ -86,6 +86,7 @@ def render_level(level):
         cliffs(leftb, midb, rightb): "-";
         land: "~";
         miniland: "_";
+        Goblin: "G";
 
     """
     cliff_sprites = {
@@ -94,16 +95,18 @@ def render_level(level):
         '_': ['miniland.png']
     }
     screen.blit(fon, (0, 0))
-    level = list(reversed(level))
-    max_y = None
+    level = list(reversed(level))  # рендер происходит с конца
+    max_y = None  # координата у самого нижнего острова
+    l_x = 0  # крайняя граница для объекта из группы enemies
+    f = False  # флаг для объекта из группы enemies
     y = HEIGHT - 100
     for i in range(len(level)):
         k = 0
         x = 20
         for j in range(len(level[i])):
-            if level[i][j] in cliff_sprites.keys() or level[i][j] == '@':
-                if level[i][j] == level[i][j + 1] or level[i][j] == '@' or level[i][j + 1] == '@':
-                    if level[i][j] == '@':
+            if level[i][j] in cliff_sprites.keys() or level[i][j] in ['@', 'G']:
+                if level[i][j] == level[i][j + 1] or level[i][j] in ['@', 'G'] or level[i][j + 1] in ['@', 'G']:
+                    if level[i][j] in ['@', 'G']:
                         if level[i][j - 1] != '.':
                             key = level[i][j - 1]
                         else:
@@ -111,23 +114,40 @@ def render_level(level):
                     else:
                         key = level[i][j]
                     im = load_image('data/Cliffs/' + cliff_sprites[key][k])
-                    k = 1
+                    if len(cliff_sprites[key]) == 1:
+                        k = 0
+                    else:
+                        k = 1
                 elif len(cliff_sprites[level[i][j]]) > 1:
                     im = load_image('data/Cliffs/' + cliff_sprites[level[i][j]][k + 1])
                     k = 0
                 else:
                     im = load_image('data/Cliffs/' + cliff_sprites[level[i][j]][k])
+
                 c = Cliff(x, y, im)
+                if level[i][j - 1] == '.':
+                    l_x = c
+                elif level[i][j + 1] == '.' and f:
+                    g.coords = (c, l_x)
+                    f = False
+
                 if max_y is None:
                     max_y = c
                 if level[i][j] == '@':
                     player.rect.x = x + 20
                     h = player.image.get_height()
                     player.rect.y = y - h + 1
+                if level[i][j] == 'G':
+                    g = Goblin()
+                    g.rect.x = x - g.rect.width // 2
+                    g.rect.y = y - 50
+                    f = True
+
                 x += c.rect.width
             else:
                 x += 10
-        y -= HEIGHT // len(level)
+        y -= 160
+
     return max_y
 
 
@@ -184,16 +204,28 @@ def main():
             player.move()
             cam.set_cam(player)  # обновление положения игрока
 
+            for sprite in enemies.sprites():
+                sprite.move()
+
             screen.blit(fon, (0, 0))
             for sprite in all_sprites:
                 sprite.update()
                 cam.apply(sprite)
             all_sprites.draw(screen)
+
+            if player.cur_mode == 'Death' and player.cur_frame == len(player.frames[player.cur_mode]) - 1:
+                game_over = True
+
+            # обработка выпадения за карту
             if player.rect.y > lowest_cliff.rect.y + HEIGHT:
                 game_over = True
+
+            if game_over:
+                # очищение групп объектов
                 all_sprites.empty()
                 cliffs.empty()
-                player.__init__()
+                enemies.empty()
+                player.__init__()  # реинициализация героя для начала игры
         else:
             font = pygame.font.Font(None, 80)
             if pause:
@@ -203,6 +235,8 @@ def main():
                 text = font.render('Game over', True, (87, 91, 99))
                 coords = (WIDTH // 2 - text.get_size()[0] // 2, HEIGHT // 2 - text.get_size()[1] // 2)
             screen.blit(text, coords)
+
+            # цикл для смены цвета
             for i in range(3):
                 if pause_color[i] + k < 0 or pause_color[i] + k > 255:
                     k = -k
